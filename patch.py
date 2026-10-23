@@ -58,7 +58,7 @@ sub(about, upstream_releases + r'(\s*target="_blank" rel="noopener">)\s*\{\{ \$t
 # Вкладка браузера
 sub("index.html", r"<title>\s*Uptime Kuma\s*</title>", f"<title>{TITLE}</title>", True)
 sub("index.html", r'content="Uptime Kuma monitoring tool"', f'content="{BRAND} monitoring"')
-sub("index.html", r'<link rel="icon" type="image/svg\+xml" href="/icon.svg" />', '<link rel="icon" type="image/png" href="/logo.png" />')
+# Иконка вкладки остаётся /icon.svg — он квадратный и берётся из branding/
 
 # Имя приложения при установке как PWA
 m = pathlib.Path("public/manifest.json")
