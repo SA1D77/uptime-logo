@@ -35,6 +35,12 @@ sub("src/layouts/Layout.vue", mob, L32, True)
 sub("src/layouts/Layout.vue", span, "")
 # Кнопка «New Update» ведёт на ваш репозиторий с инструкцией обновления
 sub("src/layouts/Layout.vue", upstream_releases, f'href="{REPO_URL}#обновление"')
+# Часы справа от логотипа (только в десктопной шапке)
+KIT = pathlib.Path(__file__).resolve().parent
+pathlib.Path("src/components/HeaderClock.vue").write_bytes((KIT / "components/HeaderClock.vue").read_bytes())
+sub("src/layouts/Layout.vue", re.escape(L40), L40 + "\n                <HeaderClock />", True)
+sub("src/layouts/Layout.vue", r'(import Login from "\.\./components/Login\.vue";)', '\\1\nimport HeaderClock from "../components/HeaderClock.vue";', True)
+sub("src/layouts/Layout.vue", r"(components: \{\s*Login,)", "\\1\n        HeaderClock,", True)
 # Убрать пункт «Помощь» (wiki Uptime Kuma) из меню профиля
 sub("src/layouts/Layout.vue", r'\s*<li>\s*<a\s+href="https://github\.com/louislam/uptime-kuma/wiki"[^<]*?>\s*<font-awesome-icon icon="info-circle" />\s*\{\{ \$t\("Help"\) \}\}\s*</a>\s*</li>', "", True)
 

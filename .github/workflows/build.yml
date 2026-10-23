@@ -5,7 +5,7 @@ on:
     - cron: "0 3 * * *" # каждый день в 03:00 UTC проверяет новую версию
   push:
     branches: [master]
-    paths: ["branding/**", "patch.py", ".github/workflows/build.yml"]
+    paths: ["branding/**", "components/**", "patch.py", ".github/workflows/build.yml"]
   workflow_dispatch:
     inputs:
       tag:
