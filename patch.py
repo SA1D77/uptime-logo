@@ -35,6 +35,8 @@ sub("src/layouts/Layout.vue", mob, L32, True)
 sub("src/layouts/Layout.vue", span, "")
 # Кнопка «New Update» ведёт на ваш репозиторий с инструкцией обновления
 sub("src/layouts/Layout.vue", upstream_releases, f'href="{REPO_URL}#обновление"')
+# Убрать пункт «Помощь» (wiki Uptime Kuma) из меню профиля
+sub("src/layouts/Layout.vue", r'\s*<li>\s*<a\s+href="https://github\.com/louislam/uptime-kuma/wiki"[^<]*?>\s*<font-awesome-icon icon="info-circle" />\s*\{\{ \$t\("Help"\) \}\}\s*</a>\s*</li>', "", True)
 
 # Страница 404
 sub("src/pages/NotFound.vue", desk, L40)
