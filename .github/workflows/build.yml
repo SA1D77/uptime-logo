@@ -1,0 +1,83 @@
+name: Build Asvad Uptime Kuma
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # каждый день в 03:00 UTC проверяет новую версию
+  push:
+    branches: [master]
+    paths: ["branding/**", "patch.py", ".github/workflows/build.yml"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Версия Uptime Kuma (пусто = последняя 2.x)"
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Определить версию
+        id: v
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG=$(git ls-remote --tags --refs https://github.com/louislam/uptime-kuma.git \
+              | awk -F/ '{print $3}' | grep -E '^2\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          fi
+          echo "Версия: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "img=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/uptime-kuma-asvad" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # По расписанию пересобираем только если вышла новая версия.
+      # Ручной запуск и изменение логотипа собирают всегда.
+      - name: Уже собрано?
+        id: chk
+        if: github.event_name == 'schedule'
+        run: |
+          if docker manifest inspect ${{ steps.v.outputs.img }}:${{ steps.v.outputs.tag }} >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Версия ${{ steps.v.outputs.tag }} уже собрана"
+          fi
+
+      - name: Скачать и пропатчить
+        if: steps.chk.outputs.skip != 'true'
+        run: |
+          git clone --depth 1 --branch "${{ steps.v.outputs.tag }}" https://github.com/louislam/uptime-kuma.git upstream
+          cp -r branding/. upstream/public/
+          rm -f upstream/public/README.md
+          cd upstream
+          python3 ../patch.py
+          echo "--- Остатки надписи:"
+          grep -rn "Uptime Kuma" src/layouts src/pages/NotFound.vue src/pages/Setup.vue index.html || true
+
+      - uses: actions/setup-node@v4
+        if: steps.chk.outputs.skip != 'true'
+        with:
+          node-version: 22
+
+      - name: Собрать и опубликовать образ
+        if: steps.chk.outputs.skip != 'true'
+        working-directory: upstream
+        run: |
+          IMG=${{ steps.v.outputs.img }}
+          TAG=${{ steps.v.outputs.tag }}
+          npm ci
+          npm run build
+          docker build -f docker/dockerfile --target release \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            -t $IMG:$TAG -t $IMG:latest .
+          docker push $IMG:$TAG
+          docker push $IMG:latest
+          echo "### Готово: \`$IMG:$TAG\`" >> "$GITHUB_STEP_SUMMARY"
