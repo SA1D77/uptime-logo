@@ -73,8 +73,15 @@ jobs:
         run: |
           IMG=${{ steps.v.outputs.img }}
           TAG=${{ steps.v.outputs.tag }}
-          npm ci
-          npm run build
+          # При ошибке последние строки лога попадают в Annotations (видно без входа в GitHub)
+          step() {
+            "$@" > /tmp/step.log 2>&1 && { cat /tmp/step.log; return 0; }
+            cat /tmp/step.log
+            echo "::error title=Ошибка: $*::$(tail -n 40 /tmp/step.log | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          }
+          step npm ci
+          step npm run build
           docker build -f docker/dockerfile --target release \
             --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
             -t $IMG:$TAG -t $IMG:latest .
